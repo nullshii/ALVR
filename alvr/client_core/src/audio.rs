@@ -44,7 +44,7 @@ pub fn record_audio_blocking(
         .channel_count(1)
         .sample_rate(sample_rate as _)
         .format(AudioFormat::PCM_I16)
-        .input_preset(AudioInputPreset::VoiceCommunication)
+        .input_preset(AudioInputPreset::VoicePerformance)
         .performance_mode(AudioPerformanceMode::LowLatency)
         .sharing_mode(AudioSharingMode::Shared)
         .data_callback(Box::new(move |_, data_ptr, frames_count| {
