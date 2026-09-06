@@ -91,6 +91,7 @@ pub enum EventType {
     ServerRequestsSelfRestart,
     Adb(AdbEvent),
     NewVersionFound { version: String, message: String },
+    HeadsetScreenshot { path: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -119,6 +120,7 @@ impl Event {
             EventType::ServerRequestsSelfRestart => "RESTART".to_string(),
             EventType::Adb(_) => "ADB".to_string(),
             EventType::NewVersionFound { .. } => "NEW VER".to_string(),
+            EventType::HeadsetScreenshot { .. } => "SCREENSHOT".to_string(),
         }
     }
 
@@ -135,6 +137,7 @@ impl Event {
             EventType::ServerRequestsSelfRestart => "Request for server restart".into(),
             EventType::Adb(adb) => serde_json::to_string(adb).unwrap(),
             EventType::NewVersionFound { version, .. } => version.clone(),
+            EventType::HeadsetScreenshot { path } => path.clone(),
         }
     }
 }

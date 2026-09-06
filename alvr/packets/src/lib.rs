@@ -204,7 +204,35 @@ pub enum ClientControlPacket {
     ProximityState(bool),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
+    // Note: new variants must be appended at the end. protocol_id() only tracks the major version,
+    // so reordering these would silently misdecode packets between same-major builds.
+    ScreenshotStart(ScreenshotStart),
+    ScreenshotChunk(ScreenshotChunk),
 }
+
+/// Announces a headset screenshot transfer. Chunks with the same `id` follow.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ScreenshotStart {
+    pub id: u32,
+    /// Lowercase, without the dot, as reported by the headset (jpeg/jpg/png).
+    pub extension: String,
+    pub chunk_count: u32,
+    pub total_size: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ScreenshotChunk {
+    pub id: u32,
+    pub chunk_index: u32,
+    pub data: Vec<u8>,
+}
+
+/// Payload size of a single screenshot chunk. Each chunk is a complete control packet, so the
+/// server's keepalive deadline is refreshed between chunks instead of expiring mid-transfer.
+pub const SCREENSHOT_CHUNK_SIZE: usize = 256 * 1024;
+
+/// Upper bound for a single screenshot transfer, to cap memory held by a partial assembly.
+pub const SCREENSHOT_MAX_SIZE: u64 = 64 * 1024 * 1024;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum FaceExpressions {

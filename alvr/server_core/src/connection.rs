@@ -3,6 +3,7 @@ use crate::{
     ServerNegotiatedStreamingConfig,
     bitrate::BitrateManager,
     input_mapping::ButtonMappingManager,
+    screenshot::{CompletedScreenshot, ScreenshotAssembler},
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
@@ -41,6 +42,35 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+
+/// Stores a screenshot received from the headset and reports it to the dashboard.
+///
+/// Failures are logged rather than propagated: a screenshot that cannot be written must never
+/// take down an otherwise healthy streaming session.
+fn store_received_screenshot(screenshot: &CompletedScreenshot) {
+    let settings = crate::settings();
+
+    if !settings.extra.capture.headset_screenshots {
+        return;
+    }
+
+    let Some(root) =
+        crate::screenshot::screenshots_root(&settings.extra.capture.headset_screenshots_dir)
+    else {
+        error!(
+            "Cannot store headset screenshot: no Pictures directory found. Set one in settings."
+        );
+
+        return;
+    };
+
+    match crate::screenshot::store_screenshot(&root, chrono::Local::now(), screenshot) {
+        Ok(path) => alvr_events::send_event(EventType::HeadsetScreenshot {
+            path: path.to_string_lossy().to_string(),
+        }),
+        Err(e) => error!("Failed to store headset screenshot: {e}"),
+    }
+}
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
@@ -1165,6 +1195,10 @@ fn connection_pipeline(
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || {
+            // Dropped together with the connection: partial screenshot transfers never survive a
+            // disconnection, so a truncated file cannot reach the disk.
+            let mut screenshot_assembler = ScreenshotAssembler::new();
+
             let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             while is_streaming(&client_hostname) {
                 let packet = match control_receiver.recv(STREAMING_RECV_TIMEOUT) {
@@ -1300,6 +1334,14 @@ fn connection_pipeline(
                             .ok();
                     }
                     ClientControlPacket::Reserved(_) | ClientControlPacket::ReservedBuffer(_) => (),
+                    ClientControlPacket::ScreenshotStart(start) => {
+                        screenshot_assembler.handle_start(start);
+                    }
+                    ClientControlPacket::ScreenshotChunk(chunk) => {
+                        if let Some(completed) = screenshot_assembler.handle_chunk(chunk) {
+                            store_received_screenshot(&completed);
+                        }
+                    }
                 }
 
                 disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;

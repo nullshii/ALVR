@@ -187,10 +187,13 @@ impl eframe::App for Dashboard {
                 EventType::NewVersionFound { version, message } => {
                     self.new_version_popup = Some(NewVersionPopup::new(version, message));
                 }
+                // HeadsetScreenshot carries the stored path for the logs tab; the user facing
+                // notification comes from the info log the server emits alongside it.
                 EventType::DebugGroup { .. }
                 | EventType::Tracking(_)
                 | EventType::Buttons(_)
-                | EventType::Haptics(_) => (),
+                | EventType::Haptics(_)
+                | EventType::HeadsetScreenshot { .. } => (),
             }
         }
 

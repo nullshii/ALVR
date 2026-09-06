@@ -3,6 +3,7 @@
 use crate::{
     ClientCapabilities, ClientCoreEvent,
     logging_backend::{LOG_CHANNEL_SENDER, LogMirrorData},
+    screenshot,
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
@@ -413,6 +414,43 @@ fn connection_pipeline(
         }
     });
 
+    // Screenshots taken with the headset own capture button are forwarded to the PC. The thread
+    // only exists for the duration of the stream: outside it there is nowhere to send them, and
+    // the watcher watermark then naturally covers exactly the streaming window.
+    let screenshot_thread = if settings.extra.capture.headset_screenshots {
+        thread::spawn({
+            let ctx = Arc::clone(&ctx);
+            let event_queue = Arc::clone(&event_queue);
+            move || {
+                if !screenshot::storage_permission_granted() {
+                    // Client logs are mirrored to the PC, so this reaches the dashboard.
+                    error!(
+                        "Screenshot forwarding is enabled but storage permission was denied on the headset."
+                    );
+
+                    return;
+                }
+
+                let mut watcher = screenshot::ScreenshotWatcher::new();
+                let mut next_id = 0u32;
+
+                while is_streaming(&ctx) {
+                    for found in watcher.poll() {
+                        next_id = next_id.wrapping_add(1);
+
+                        if screenshot::send_screenshot(&ctx, next_id, &found) {
+                            screenshot::notify_delivered(&event_queue);
+                        }
+                    }
+
+                    thread::sleep(screenshot::POLL_INTERVAL);
+                }
+            }
+        })
+    } else {
+        thread::spawn(|| ())
+    };
+
     let (log_channel_sender, log_channel_receiver) = mpsc::channel();
 
     let control_send_thread = thread::spawn({
@@ -579,6 +617,7 @@ fn connection_pipeline(
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
     haptics_receive_thread.join().ok();
+    screenshot_thread.join().ok();
     control_send_thread.join().ok();
     control_receive_thread.join().ok();
     stream_receive_thread.join().ok();

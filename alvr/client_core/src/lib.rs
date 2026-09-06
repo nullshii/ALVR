@@ -8,6 +8,7 @@
 mod c_api;
 mod connection;
 mod logging_backend;
+mod screenshot;
 mod sockets;
 mod statistics;
 mod storage;
@@ -96,6 +97,10 @@ impl ClientCoreContext {
         {
             dbg_client_core!("Getting permissions");
             alvr_system_info::try_get_permission(alvr_system_info::MICROPHONE_PERMISSION);
+            // Asked on every launch: a user who declined once may want screenshot forwarding
+            // later, and the system only shows the dialog while the permission is missing.
+            alvr_system_info::try_get_permission(alvr_system_info::STORAGE_READ_PERMISSION);
+            alvr_system_info::try_get_permission(alvr_system_info::MEDIA_IMAGES_PERMISSION);
             alvr_system_info::set_wifi_lock(true);
         }
 

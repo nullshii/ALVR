@@ -14,6 +14,11 @@ use std::{
 };
 
 pub const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
+// Needed to read screenshots taken by the headset system UI, which land in the shared media
+// collection. READ_MEDIA_IMAGES replaced READ_EXTERNAL_STORAGE in API 33; both are declared so
+// the same build works on Pico 4 (API 29) and on newer headsets.
+pub const STORAGE_READ_PERMISSION: &str = "android.permission.READ_EXTERNAL_STORAGE";
+pub const MEDIA_IMAGES_PERMISSION: &str = "android.permission.READ_MEDIA_IMAGES";
 
 pub fn vm() -> JavaVM {
     unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()) }
@@ -33,6 +38,26 @@ fn get_api_level() -> i32 {
         .i()
     })
     .unwrap()
+}
+
+/// Whether the permission is currently granted. Used to report a denial where it matters, since
+/// `requestPermissions` cannot report its outcome synchronously.
+pub fn has_permission(permission: &str) -> bool {
+    vm().attach_current_thread(|env| {
+        let permission_jstring = env.new_string(permission)?;
+
+        let permission_status = env
+            .call_method(
+                unsafe { JObject::global_kind_from_raw(context()) },
+                jni_str!("checkSelfPermission"),
+                jni_sig!("(Ljava/lang/String;)I"),
+                &[(&permission_jstring).into()],
+            )?
+            .i()?;
+
+        JniResult::Ok(permission_status == 0)
+    })
+    .unwrap_or(false)
 }
 
 pub fn try_get_permission(permission: &str) {

@@ -5,6 +5,7 @@ mod hand_gestures;
 mod haptics;
 mod input_mapping;
 mod logging_backend;
+mod screenshot;
 mod sockets;
 mod statistics;
 mod tracking;

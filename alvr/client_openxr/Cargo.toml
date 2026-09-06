@@ -67,6 +67,13 @@ name = "android.permission.CHANGE_WIFI_MULTICAST_STATE"
 name = "android.permission.INTERNET"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.RECORD_AUDIO"
+# Reading screenshots taken by the headset system UI. READ_MEDIA_IMAGES supersedes
+# READ_EXTERNAL_STORAGE on API 33+; both are declared so one build covers Pico 4 (API 29)
+# and newer headsets.
+[[package.metadata.android.uses_permission]]
+name = "android.permission.READ_EXTERNAL_STORAGE"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.READ_MEDIA_IMAGES"
 # WAKE_LOCK is needed for proper wifi locking
 # https://developer.android.com/reference/android/net/wifi/WifiManager.WifiLock
 [[package.metadata.android.uses_permission]]

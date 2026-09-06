@@ -1577,6 +1577,20 @@ pub struct CaptureConfig {
 
     #[schema(flag = "steamvr-restart")]
     pub capture_frame_dir: String,
+
+    #[schema(strings(
+        display_name = "Receive headset screenshots",
+        help = "Screenshots taken with the headset's own capture button are copied to this PC \
+                while streaming. Requires storage permission on the headset."
+    ))]
+    pub headset_screenshots: bool,
+
+    #[schema(strings(
+        display_name = "Headset screenshots directory",
+        help = "Where received screenshots are stored, in a YYYY-MM subfolder. \
+                Leave empty to use <Pictures>/ALVR."
+    ))]
+    pub headset_screenshots_dir: String,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -2258,6 +2272,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 } else {
                     "".into()
                 },
+                headset_screenshots: false,
+                headset_screenshots_dir: "".into(),
             },
             patches: PatchesDefault {
                 linux_async_compute: false,
