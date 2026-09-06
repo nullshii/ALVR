@@ -2272,7 +2272,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 } else {
                     "".into()
                 },
-                headset_screenshots: false,
+                headset_screenshots: true,
                 headset_screenshots_dir: "".into(),
             },
             patches: PatchesDefault {
